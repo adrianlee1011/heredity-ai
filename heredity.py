@@ -139,6 +139,7 @@ def joint_probability(people, one_gene, two_genes, have_trait):
         * everyone in set `have_trait` has the trait, and
         * everyone not in set` have_trait` does not have the trait.
     """
+    # overall joint probability of the whole dataset
     jointProb = 1
 
     for person, data in people.items():
@@ -149,14 +150,23 @@ def joint_probability(people, one_gene, two_genes, have_trait):
             if mother is None:
                 singleProb *= PROBS["gene"][1]
             else:
+                # given person has one gene, either got the gene from father or mother, not both
+                # initialize probability of passing gene based on number of genes in parent
+                # 2 genes = 0.99, 1 gene = 0.5, 0 genes = 0.01, with probability of mutation 0.01
                 dadPass = PROBS['mutation']
                 momPass = PROBS['mutation']
-                if father in one_gene or father in two_genes:
-                    dadPass = 1 - dadPass
-                if mother in one_gene or mother in two_genes:
-                    momPass = 1 - momPass
+                if father in one_gene:
+                    dadPass = 0.5
+                elif father in two_genes:
+                    dadPass = 1 - PROBS['mutation']
+                if mother in one_gene:
+                    momPass = 0.5
+                elif mother in two_genes:
+                    momPass = 1 - PROBS['mutation']
+
                 singleProb *= (dadPass * (1-momPass) + (1-dadPass) * momPass)
 
+            # joint probability of traits
             if person in have_trait:
                 singleProb *= PROBS['trait'][1][True]
             else:
@@ -166,13 +176,19 @@ def joint_probability(people, one_gene, two_genes, have_trait):
             if mother is None:
                 singleProb *= PROBS['gene'][2]
             else:
+                # given person has two genes, both parents passed to them
+                # therefore the singleProb equation
                 dadPass = PROBS['mutation']
                 momPass = PROBS['mutation']
-                if father in one_gene or father in two_genes:
-                    dadPass = 1 - dadPass
-                if mother in one_gene or mother in two_genes:
-                    momPass = 1 - momPass
-                # to do
+                if father in one_gene:
+                    dadPass = 0.5
+                elif father in two_genes:
+                    dadPass = 1 - PROBS['mutation']
+                if mother in one_gene:
+                    momPass = 0.5
+                elif mother in two_genes:
+                    momPass = 1 - PROBS['mutation']
+
                 singleProb *= (dadPass * momPass)
             
             if person in have_trait:
@@ -185,12 +201,19 @@ def joint_probability(people, one_gene, two_genes, have_trait):
                 singleProb *= PROBS['gene'][0]
 
             else:
+                # given person has no genes, none of parents passed to them
+                # therefore it is the negation of mom and dad pass
                 dadPass = PROBS['mutation']
                 momPass = PROBS['mutation']
-                if father in one_gene or father in two_genes:
-                    dadPass = 1 - dadPass
-                if mother in one_gene or mother in two_genes:
-                    momPass = 1 - momPass
+                if father in one_gene:
+                    dadPass = 0.5
+                elif father in two_genes:
+                    dadPass = 1 - PROBS['mutation']
+                if mother in one_gene:
+                    momPass = 0.5
+                elif mother in two_genes:
+                    momPass = 1 - PROBS['mutation']
+
                 singleProb *= ((1-dadPass) * (1-momPass))
             
             if person in have_trait:
@@ -211,7 +234,18 @@ def update(probabilities, one_gene, two_genes, have_trait, p):
     Which value for each distribution is updated depends on whether
     the person is in `have_gene` and `have_trait`, respectively.
     """
-    raise NotImplementedError
+    for person, data in probabilities.items():
+        if person in one_gene:
+            data['gene'][1] += p
+        elif person in two_genes:
+            data['gene'][2] += p
+        else:
+            data['gene'][0] += p
+        
+        if person in have_trait:
+            data['trait'][True] += p
+        else:
+            data['trait'][False] += p
 
 
 def normalize(probabilities):
@@ -219,14 +253,19 @@ def normalize(probabilities):
     Update `probabilities` such that each probability distribution
     is normalized (i.e., sums to 1, with relative proportions the same).
     """
-    raise NotImplementedError
+    for person, data in probabilities.items():
+        sumGene = 0
+        for i in range(3):
+            sumGene += data['gene'][i]
+        multiplierGene = 1/sumGene
+        for i in range(3):
+            data['gene'][i] = data['gene'][i] * multiplierGene
+
+        sumTrait = data['trait'][True] + data['trait'][False]
+        multiplierTrait = 1/sumTrait
+        data['trait'][True] = data['trait'][True] * multiplierTrait
+        data['trait'][False] = data['trait'][False] * multiplierTrait
 
 
 if __name__ == "__main__":
-    # main()
-    people = {
-        'Harry': {'name': 'Harry', 'mother': 'Lily', 'father': 'James', 'trait': None},
-        'James': {'name': 'James', 'mother': None, 'father': None, 'trait': True},
-        'Lily': {'name': 'Lily', 'mother': None, 'father': None, 'trait': False}
-    }
-    print(joint_probability(people, {"Harry"}, {"James"}, {"James"}))
+    main()
